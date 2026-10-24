@@ -10,8 +10,8 @@ import pandas as pd
 from agristatspy.design.base import DesignMetadata, DesignResult
 from agristatspy.design.validation import (
     parse_treatments,
-    validate_replications,
     validate_plot_numbering,
+    validate_replications,
     validate_seed,
 )
 
