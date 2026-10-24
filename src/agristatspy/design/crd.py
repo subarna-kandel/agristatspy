@@ -11,6 +11,7 @@ from agristatspy.design.base import DesignMetadata, DesignResult
 from agristatspy.design.validation import (
     parse_treatments,
     validate_replications,
+    validate_plot_numbering,
     validate_seed,
 )
 
@@ -76,6 +77,7 @@ def crd(
     labels = parse_treatments(treatments, n_treatments)
     reps = validate_replications(replications)
     sd = validate_seed(seed)
+    plot_prefix, start_plot = validate_plot_numbering(plot_prefix, start_plot)
 
     k = len(labels)
     total = k * reps

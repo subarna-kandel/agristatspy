@@ -129,3 +129,33 @@ def validate_seed(seed: object) -> int | None:
             f"'seed' must be an integer or None; got {type(seed).__name__!r}."
         )
     return seed
+
+
+def validate_plot_numbering(plot_prefix: object, start_plot: object) -> tuple[str, int]:
+    """Validate the plot-ID prefix and starting plot number.
+
+    Parameters
+    ----------
+    plot_prefix:
+        Must be a string.
+    start_plot:
+        Must be a non-negative (non-bool) integer.
+
+    Returns
+    -------
+    tuple[str, int]
+
+    Raises
+    ------
+    DesignError
+        If either value is invalid.
+    """
+    if not isinstance(plot_prefix, str):
+        raise DesignError(
+            f"'plot_prefix' must be a string; got {type(plot_prefix).__name__!r}."
+        )
+    if isinstance(start_plot, bool) or not isinstance(start_plot, int) or start_plot < 0:
+        raise DesignError(
+            f"'start_plot' must be a non-negative integer; got {start_plot!r}."
+        )
+    return plot_prefix, start_plot

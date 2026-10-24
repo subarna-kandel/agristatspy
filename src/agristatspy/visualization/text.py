@@ -42,6 +42,11 @@ def render_layout(
     dtype = design.metadata.design_type  # type: ignore[attr-defined]
     resolved_mode = mode
 
+    if row_length is not None and (
+        isinstance(row_length, bool) or not isinstance(row_length, int) or row_length < 1
+    ):
+        raise ValueError(f"row_length must be a positive integer; got {row_length!r}.")
+
     if mode == "auto":
         resolved_mode = "blocks" if dtype == "RCBD" else "grid"
 
@@ -178,6 +183,9 @@ def _render_rcbd(
     tbl = design.table  # type: ignore[attr-defined]
     n_blocks = meta.replications
 
+    if mode not in ("blocks", "grid", "sequence"):
+        raise ValueError(f"Unknown RCBD mode {mode!r}. Choose 'blocks', 'grid', or 'sequence'.")
+
     header = (
         f"RCBD — {meta.n_treatments} treatments × "
         f"{n_blocks} blocks = {meta.total_plots} plots"
@@ -191,7 +199,7 @@ def _render_rcbd(
 
     # Build a compact separator
     total_w = n_cols * (actual_width + 3) + 1
-    eq_line = "=" * total_w
+    eq_line = (separator or "=") * total_w
 
     blocks = sorted(tbl["block"].unique())
     for b_idx, block_id in enumerate(blocks):

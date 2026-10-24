@@ -275,12 +275,18 @@ def anova_rcbd(
     missing = n_before - len(df)
 
     # Verify completeness: each (treatment, block) pair must appear exactly once.
+    # Missing combinations (absent rows or dropped NaN responses) are rejected
+    # because the sequential (Type I) SS used below is only valid when balanced.
+    n_trt = df[treatment].nunique()
+    n_blk = df[block].nunique()
     combo_counts = df.groupby([treatment, block]).size()
-    if (combo_counts != 1).any():
+    if (combo_counts != 1).any() or len(combo_counts) != n_trt * n_blk:
         bad = combo_counts[combo_counts != 1]
         raise AnalysisError(
             "anova_rcbd expects exactly one observation per treatment-block "
-            f"combination.  Problematic combinations:\n{bad}"
+            "combination (a complete, balanced layout with no missing "
+            f"responses).  Found {len(combo_counts)} of {n_trt * n_blk} "
+            f"combinations.  Duplicated combinations:\n{bad}"
         )
 
     n_total = len(df)
