@@ -19,7 +19,7 @@ statistically sound results without writing boilerplate for every experiment.
 - **Analysis of variance** — CRD, RCBD, Latin square, factorial and split-plot ANOVA (with correct split-plot error terms), CV%, and explicit model assumptions; `ag.anova(...)` dispatches by design.
 - **Mean comparison** — Tukey HSD, Fisher's LSD and Bonferroni, using the design's own error term, with compact letter displays.
 - **Diagnostics and plots** — residual normality/variance checks, mean, box, interaction and residual plots.
-- **Reports** — Markdown and HTML reports of designs, ANOVA, comparisons and diagnostics.
+- **Reports and Excel export** — Markdown, HTML and multi-sheet Excel workbooks of designs, ANOVA, comparisons and diagnostics.
 - **Strict validation** — invalid inputs and incomplete data raise clear, package-specific exceptions.
 
 ## Installation
@@ -90,7 +90,7 @@ For a CRD, use `ag.anova_crd(df, response=..., treatment=...)`.
 | `ag.tukey_hsd`, `ag.lsd_test`, `ag.bonferroni` | Pairwise comparisons (`.letters()` for groupings) |
 | `ag.residual_diagnostics(...)` | Residuals, Shapiro–Wilk, Brown–Forsythe |
 | `ag.visualization.plot_*` | Layout, means, box, interaction and residual plots |
-| `ag.io.write_report(...)` | Markdown / HTML report |
+| `ag.io.write_report(...)`, `ag.io.write_excel(...)` | Markdown / HTML report; multi-sheet Excel workbook |
 
 Design functions share `seed`, `plot_prefix` and `start_plot` (plus design-specific
 arguments such as `treatments`, `replications`, `factors`) and return a

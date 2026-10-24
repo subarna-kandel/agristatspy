@@ -30,6 +30,11 @@ design = ag.design.rcbd(treatments=["Control", "N50", "N100", "N150"], replicati
 fig, _ = design.plot_layout()
 fig.savefig("layout.png", dpi=200)
 
+ag.io.write_excel(
+    "rcbd_results.xlsx", design=design, summary=summary, anova=anova,
+    comparison=comparison, diagnostics=diagnostics,
+)
+
 for ext in ("md", "html"):
     path = ag.io.write_report(
         f"rcbd_report.{ext}",

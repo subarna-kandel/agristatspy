@@ -17,7 +17,8 @@ All notable changes to this project are documented here. The project follows
 - `residual_diagnostics` (Shapiro–Wilk, Brown–Forsythe).
 - Graphics: `design.plot_layout()`, `plot_means`, `plot_boxplot`,
   `plot_interaction`, `plot_residuals` (PNG/SVG).
-- Markdown/HTML reports via `ag.io.write_report`.
+- Markdown/HTML reports via `ag.io.write_report`, and multi-sheet Excel
+  workbooks via `ag.io.write_excel` (also `write_report(..., "x.xlsx")`).
 - New example datasets and example scripts 05–08.
 - `CHANGELOG.md`, `CONTRIBUTING.md`, `CITATION.cff`, MIT `LICENSE`, issue templates.
 

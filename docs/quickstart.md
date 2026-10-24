@@ -120,4 +120,6 @@ fig, ax = ag.visualization.plot_means(df, "yield", "treatment", letters=cmp.lett
 ag.io.write_report("report.md", anova=ag.anova_rcbd(df, "yield", "treatment", "block"), comparison=cmp, diagnostics=diag)
 ```
 
+`ag.io.write_excel("results.xlsx", design=design, summary=..., anova=..., comparison=cmp, diagnostics=diag)` writes one sheet per item (needs `pip install agristatspy[excel]`).
+
 See the scripts in `examples/` (05–08) for complete workflows.

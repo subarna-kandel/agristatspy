@@ -182,3 +182,42 @@ class TestExtraDesignOptions:
         df = load_rcbd_example().iloc[1:]
         with pytest.raises(AnalysisError):
             ag.anova_rcbd(df, "yield", "treatment", "block")
+
+
+class TestExcelExport:
+    @pytest.fixture
+    def parts(self):
+        df = load_rcbd_example()
+        return {
+            "design": ag.design.rcbd(n_treatments=4, replications=3, seed=1),
+            "summary": ag.treatment_summary(df, "yield", "treatment"),
+            "anova": ag.anova_rcbd(df, "yield", "treatment", "block"),
+            "comparison": ag.tukey_hsd(df, "yield", "treatment", block="block"),
+            "diagnostics": ag.residual_diagnostics(df, "yield", "treatment", block="block"),
+        }
+
+    def test_all_sheets_and_values(self, tmp_path, parts):
+        openpyxl = pytest.importorskip("openpyxl")
+        p = ag.io.write_excel(tmp_path / "out.xlsx", **parts)
+        wb = openpyxl.load_workbook(p)
+        assert wb.sheetnames == [
+            "Design", "Layout", "Summary", "ANOVA", "ANOVA notes",
+            "Comparison", "Letters", "Comparison notes", "Residuals", "Diagnostics",
+        ]
+        back = pd.read_excel(p, sheet_name="ANOVA")
+        pd.testing.assert_frame_equal(back, parts["anova"].table, check_dtype=False)
+        assert len(pd.read_excel(p, sheet_name="Design")) == 12
+
+    def test_report_xlsx_delegates(self, tmp_path, parts):
+        pytest.importorskip("openpyxl")
+        p = ag.io.write_report(tmp_path / "r.xlsx", anova=parts["anova"])
+        assert pd.ExcelFile(p).sheet_names == ["ANOVA", "ANOVA notes"]
+
+    def test_nothing_supplied(self, tmp_path):
+        with pytest.raises(ExportError):
+            ag.io.write_excel(tmp_path / "x.xlsx")
+
+    def test_unwritable_path(self, tmp_path, parts):
+        pytest.importorskip("openpyxl")
+        with pytest.raises(ExportError):
+            ag.io.write_excel(tmp_path / "missing_dir" / "x.xlsx", anova=parts["anova"])

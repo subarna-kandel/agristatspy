@@ -89,7 +89,8 @@ def write_report(
         an ``ANOVAResult``, a ``ComparisonResult`` and a ``DiagnosticsResult``.
         Sections appear in that order; omitted ones are skipped.
     fmt:
-        ``"md"`` or ``"html"``.
+        ``"md"``, ``"html"`` or ``"xlsx"`` (delegates to
+        :func:`agristatspy.io.write_excel`).
 
     Returns
     -------
@@ -103,8 +104,12 @@ def write_report(
     """
     out = Path(path).resolve()
     fmt = (fmt or out.suffix.lstrip(".") or "md").lower()
+    if fmt in ("xlsx", "excel"):
+        from agristatspy.io.excel import write_excel
+
+        return write_excel(out, design, summary, anova, comparison, diagnostics)
     if fmt not in ("md", "markdown", "html"):
-        raise ExportError(f"Unsupported report format {fmt!r}. Choose 'md' or 'html'.")
+        raise ExportError(f"Unsupported report format {fmt!r}. Choose 'md', 'html' or 'xlsx'.")
     items = _blocks(title, design, summary, anova, comparison, diagnostics)
     if not items:
         raise ExportError("write_report needs at least one of: design, summary, anova, comparison, diagnostics.")
