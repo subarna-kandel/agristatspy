@@ -16,6 +16,7 @@ statistically sound results without writing boilerplate for every experiment.
 - **Design generation** — CRD, RCBD, Latin square, factorial (CRD or RCBD layout) and split-plot designs with reproducible, seeded randomization.
 - **Field layouts** — printable text layouts with block separators, Matplotlib layout figures (PNG/SVG), and CSV/Excel export.
 - **Descriptive statistics** — per-treatment summaries and coefficient of variation.
+- **One-command analysis** — `ag.analyze` chains normality check → ANOVA → post-hoc letters → mean ± SEM, SEm±, CD and CV%, with thesis-ready export (Excel, CSV, Markdown, HTML, LaTeX).
 - **Analysis of variance** — CRD, RCBD, Latin square, factorial and split-plot ANOVA (with correct split-plot error terms), CV%, and explicit model assumptions; `ag.anova(...)` dispatches by design.
 - **Mean comparison** — Tukey HSD, Fisher's LSD and Bonferroni, using the design's own error term, with compact letter displays.
 - **Diagnostics and plots** — residual normality/variance checks, mean, box, interaction and residual plots.
@@ -65,7 +66,23 @@ print(rcbd.text_layout())
 rcbd.to_csv("field_layout.csv")
 ```
 
-### Analyze data
+### Analyze data in one command
+
+```python
+import agristatspy as ag
+from agristatspy.datasets import load_rcbd_example
+
+df = load_rcbd_example()
+report = ag.analyze(df, "yield", "rcbd", treatment="treatment", block="block")
+print(report)                      # normality -> ANOVA -> post-hoc letters, CV%, SEm±, CD
+
+report.thesis_table()              # Mean ± SEM with letters, ready for a paper
+report.export("results.xlsx")      # also .csv, .md, .html (Word), .tex
+```
+
+`analyze` runs Shapiro–Wilk on the residuals first. If they are not normal it asks whether to proceed or review the data (in scripts it pauses; call `report.proceed()` to continue). Nothing is dropped or transformed automatically.
+
+### Step-by-step analysis
 
 ```python
 import agristatspy as ag
@@ -86,6 +103,7 @@ For a CRD, use `ag.anova_crd(df, response=..., treatment=...)`.
 |---|---|
 | `ag.design.crd` / `rcbd` / `latin_square` / `factorial` / `split_plot` | Generate a randomized design |
 | `ag.treatment_summary(...)` | Per-treatment descriptive statistics and CV% |
+| `ag.analyze(...)` | Whole workflow in one call, with export |
 | `ag.anova(...)`, `anova_crd`, `anova_rcbd`, `anova_latin_square`, `anova_factorial`, `anova_split_plot` | Analysis of variance |
 | `ag.tukey_hsd`, `ag.lsd_test`, `ag.bonferroni` | Pairwise comparisons (`.letters()` for groupings) |
 | `ag.residual_diagnostics(...)` | Residuals, Shapiro–Wilk, Brown–Forsythe |

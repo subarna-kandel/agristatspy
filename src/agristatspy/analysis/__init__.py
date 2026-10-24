@@ -16,6 +16,7 @@ from agristatspy.analysis.comparison import (
 )
 from agristatspy.analysis.diagnostics import DiagnosticsResult, residual_diagnostics
 from agristatspy.analysis.summary import treatment_summary
+from agristatspy.analysis.workflow import AnalysisReport, analyze
 
 __all__ = [
     "anova_crd",
@@ -30,6 +31,8 @@ __all__ = [
     "treatment_summary",
     "residual_diagnostics",
     "DiagnosticsResult",
+    "analyze",
+    "AnalysisReport",
     "ANOVAResult",
     "ComparisonResult",
 ]

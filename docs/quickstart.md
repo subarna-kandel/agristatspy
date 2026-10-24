@@ -99,7 +99,24 @@ print(comparisons)
 
 ---
 
-## 5. More designs and tools
+## 5. One-command analysis
+
+```python
+report = ag.analyze(df, "yield", "rcbd", treatment="treatment", block="block")
+print(report)
+```
+
+Order of steps: Shapiro–Wilk on residuals → (your decision if not normal) → ANOVA → post-hoc letters if significant → summary.
+
+Options: `design` (`crd`, `rcbd`, `latin_square`, `factorial`, `split_plot`), `posthoc` (`"tukey"`, `"lsd"`, `"bonferroni"`, `None`), `posthoc_when` (`"significant"`/`"always"`), `alpha`, `normality_alpha`, `on_nonnormal` (`"ask"`, `"proceed"`, `"review"`, `"stop"`), `decimals`.
+
+If residuals are not normal: in an interactive terminal you are asked to `[p]roceed` or `[r]eview`; in scripts the report is returned with `status == "paused"` and you call `report.proceed()` (or inspect `report.flagged`, the observations with large standardized residuals, which are never removed).
+
+Outputs: `report.thesis_table()` (Mean ± SEM, letters, SEm±, CD, CV%, ANOVA p), `report.anova_table()`, `report.means`, `report.stats`, `report.comparison`, `report.export("results.xlsx" | .csv | .md | .html | .tex)`.
+
+Split-plot designs get ANOVA and means but no letters yet (each factor needs its own error term).
+
+## 6. More designs and tools
 
 ```python
 # Latin square, factorial, split-plot

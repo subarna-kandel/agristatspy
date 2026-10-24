@@ -28,6 +28,7 @@ Quick-start
 """
 from agristatspy import analysis, design, io, visualization
 from agristatspy.analysis import (
+    analyze,
     anova,
     anova_crd,
     anova_factorial,
@@ -55,6 +56,7 @@ __all__ = [
     "io",
     "visualization",
     "residual_diagnostics",
+    "analyze",
     "anova",
     "anova_crd",
     "anova_factorial",

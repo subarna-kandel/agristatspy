@@ -22,6 +22,9 @@ All notable changes to this project are documented here. The project follows
 - New example datasets and example scripts 05–08.
 - `CHANGELOG.md`, `CONTRIBUTING.md`, `CITATION.cff`, MIT `LICENSE`, issue templates.
 
+- `ag.analyze` one-command workflow (Shapiro–Wilk → decision → ANOVA → post-hoc letters → mean ± SEM, SEm±, CD, CV%) with `AnalysisReport.thesis_table()`, `anova_table()`, `proceed()` and `export()` (xlsx, csv, md, html, tex).
+- `residual_diagnostics` accepts a list of blocking columns.
+
 ### Changed
 - `tukey_hsd` is now computed directly from the studentized range distribution
   (verified against `statsmodels`) and validates `alpha`.
