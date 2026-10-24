@@ -1,0 +1,57 @@
+# Project-local files (not tracked)
+agristatspy_project_spec.md
+project_progress.md
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env/
+
+# Python build artefacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+*.eggs
+MANIFEST
+
+# Distribution / packaging
+.Python
+sdist/
+wheels/
+*.whl
+*.tar.gz
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+*.pytest_tmp/
+
+# ruff / mypy / type-check caches
+.ruff_cache/
+.mypy_cache/
+.dmypy.json
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Editors / IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs and local data
+*.log
+*.tmp
+*.bak
