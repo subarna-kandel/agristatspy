@@ -71,7 +71,7 @@ class DesignMetadata:
 
 
 class DesignResult:
-    """Container returned by :func:`crd` and :func:`rcbd`.
+    """Container returned by every design generator (``crd``, ``rcbd``, …).
 
     Parameters
     ----------
@@ -158,8 +158,9 @@ class DesignResult:
         Parameters
         ----------
         mode:
-            ``"auto"`` chooses ``"blocks"`` for RCBD and ``"grid"`` for CRD.
-            Other valid values: ``"blocks"``, ``"grid"``, ``"sequence"``.
+            ``"auto"`` chooses ``"blocks"`` for RCBD/split-plot and ``"grid"``
+            for CRD.  Other valid values: ``"blocks"``, ``"grid"``,
+            ``"sequence"``, and ``"table"`` (the plain assignment table).
         row_length:
             Plots per row in ``"grid"`` mode.  Defaults to the number of
             treatments for RCBD blocks.
@@ -199,20 +200,19 @@ class DesignResult:
         return self.text_layout()
 
     # ------------------------------------------------------------------
-    # Graphical layout (Phase 3 — stub in Phase 1)
+    # Graphical layout
     # ------------------------------------------------------------------
 
     def plot_layout(self, **kwargs: Any) -> tuple:
-        """Return a Matplotlib (figure, axes) for the field layout.
+        """Return a Matplotlib ``(figure, axes)`` for the field layout.
 
-        .. note::
-           Full graphical output is implemented in Phase 3.  This stub raises
-           ``NotImplementedError`` with a helpful message.
+        Keyword arguments are passed to
+        :func:`agristatspy.visualization.plots.plot_layout`.  Save the result
+        with ``fig.savefig("layout.png", dpi=300)`` (or ``.svg``).
         """
-        raise NotImplementedError(
-            "Graphical layout (plot_layout) will be available in Phase 3. "
-            "Use text_layout() for a terminal-friendly representation."
-        )
+        from agristatspy.visualization.plots import plot_layout
+
+        return plot_layout(self, **kwargs)
 
     # ------------------------------------------------------------------
     # Export

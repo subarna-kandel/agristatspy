@@ -13,11 +13,13 @@ statistically sound results without writing boilerplate for every experiment.
 
 ## Features
 
-- **Design generation** — Completely Randomized Design (CRD) and Randomized Complete Block Design (RCBD) with reproducible, seeded randomization.
-- **Field layouts** — printable text layouts with block separators; export to CSV or Excel.
+- **Design generation** — CRD, RCBD, Latin square, factorial (CRD or RCBD layout) and split-plot designs with reproducible, seeded randomization.
+- **Field layouts** — printable text layouts with block separators, Matplotlib layout figures (PNG/SVG), and CSV/Excel export.
 - **Descriptive statistics** — per-treatment summaries and coefficient of variation.
-- **Analysis of variance** — one-way ANOVA (CRD) and two-way additive ANOVA (RCBD), with CV% and explicit model assumptions.
-- **Mean comparison** — Tukey HSD pairwise comparisons with simultaneous confidence intervals.
+- **Analysis of variance** — CRD, RCBD, Latin square, factorial and split-plot ANOVA (with correct split-plot error terms), CV%, and explicit model assumptions; `ag.anova(...)` dispatches by design.
+- **Mean comparison** — Tukey HSD, Fisher's LSD and Bonferroni, using the design's own error term, with compact letter displays.
+- **Diagnostics and plots** — residual normality/variance checks, mean, box, interaction and residual plots.
+- **Reports** — Markdown and HTML reports of designs, ANOVA, comparisons and diagnostics.
 - **Strict validation** — invalid inputs and incomplete data raise clear, package-specific exceptions.
 
 ## Installation
@@ -82,15 +84,16 @@ For a CRD, use `ag.anova_crd(df, response=..., treatment=...)`.
 
 | Function | Purpose |
 |---|---|
-| `ag.design.crd(...)` | Generate a Completely Randomized Design |
-| `ag.design.rcbd(...)` | Generate a Randomized Complete Block Design |
+| `ag.design.crd` / `rcbd` / `latin_square` / `factorial` / `split_plot` | Generate a randomized design |
 | `ag.treatment_summary(...)` | Per-treatment descriptive statistics and CV% |
-| `ag.anova_crd(...)` | One-way ANOVA |
-| `ag.anova_rcbd(...)` | Two-way additive ANOVA (treatment + block) |
-| `ag.tukey_hsd(...)` | Tukey HSD pairwise comparisons |
+| `ag.anova(...)`, `anova_crd`, `anova_rcbd`, `anova_latin_square`, `anova_factorial`, `anova_split_plot` | Analysis of variance |
+| `ag.tukey_hsd`, `ag.lsd_test`, `ag.bonferroni` | Pairwise comparisons (`.letters()` for groupings) |
+| `ag.residual_diagnostics(...)` | Residuals, Shapiro–Wilk, Brown–Forsythe |
+| `ag.visualization.plot_*` | Layout, means, box, interaction and residual plots |
+| `ag.io.write_report(...)` | Markdown / HTML report |
 
-Design functions share the parameters `treatments`, `n_treatments`,
-`replications`, `seed`, `plot_prefix`, and `start_plot`, and return a
+Design functions share `seed`, `plot_prefix` and `start_plot` (plus design-specific
+arguments such as `treatments`, `replications`, `factors`) and return a
 `DesignResult` with:
 
 | Member | Description |
@@ -100,6 +103,7 @@ Design functions share the parameters `treatments`, `n_treatments`,
 | `.validate()` | Check design invariants |
 | `.summary()` | Treatment-frequency summary |
 | `.text_layout(...)` | Printable field layout |
+| `.plot_layout()` | Matplotlib `(fig, ax)` field layout |
 | `.to_csv(path)` / `.to_excel(path)` | Export the assignment table |
 
 ## Statistical notes
@@ -108,7 +112,8 @@ Design functions share the parameters `treatments`, `n_treatments`,
 - Statistical significance does not establish agronomic importance.
 - The additive RCBD model does not estimate a treatment-by-block interaction.
 - `CV% = √MS_error / grand mean × 100`.
-- Observations with missing responses are reported. `anova_rcbd` requires a complete layout (one observation per treatment–block combination).
+- Observations with missing responses are reported. Blocked and multi-factor analyses require complete, balanced layouts.
+- Fisher's LSD does not control the family-wise error rate; diagnostic tests that are not significant do not prove assumptions hold.
 
 Full model descriptions, assumptions, and limitations:
 [docs/statistical-methods.md](docs/statistical-methods.md).

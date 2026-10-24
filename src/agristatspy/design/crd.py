@@ -14,6 +14,7 @@ from agristatspy.design.validation import (
     validate_replications,
     validate_seed,
 )
+from agristatspy.exceptions import DesignError
 
 
 def crd(
@@ -23,6 +24,7 @@ def crd(
     seed: int | None = None,
     plot_prefix: str = "P",
     start_plot: int = 1,
+    row_length: int | None = None,
 ) -> DesignResult:
     """Generate a Completely Randomized Design (CRD).
 
@@ -51,6 +53,10 @@ def crd(
         String prepended to each plot number.  Default is ``"P"``.
     start_plot:
         Integer number of the first plot.  Default is ``1``.
+    row_length:
+        Optional positive integer.  When given, plots are assigned ``row`` and
+        ``column`` positions by filling rows of this length in plot order.
+        This is a numbering convention; it does not model field gradients.
 
     Returns
     -------
@@ -78,6 +84,10 @@ def crd(
     reps = validate_replications(replications)
     sd = validate_seed(seed)
     plot_prefix, start_plot = validate_plot_numbering(plot_prefix, start_plot)
+    if row_length is not None and (
+        isinstance(row_length, bool) or not isinstance(row_length, int) or row_length < 1
+    ):
+        raise DesignError(f"'row_length' must be a positive integer; got {row_length!r}.")
 
     k = len(labels)
     total = k * reps
@@ -97,13 +107,15 @@ def crd(
         plot_num = start_plot + i
         width = max(2, len(str(start_plot + total - 1)))
         plot_id = f"{plot_prefix}{str(plot_num).zfill(width)}"
-        records.append(
-            {
-                "plot_id": plot_id,
-                "treatment": treatment,
-                "replication_number": rep_counters[treatment],
-            }
-        )
+        record = {
+            "plot_id": plot_id,
+            "treatment": treatment,
+            "replication_number": rep_counters[treatment],
+        }
+        if row_length is not None:
+            record["row"] = i // row_length + 1
+            record["column"] = i % row_length + 1
+        records.append(record)
 
     table = pd.DataFrame(records)
 
@@ -116,6 +128,7 @@ def crd(
         seed=sd,
         plot_prefix=plot_prefix,
         start_plot=start_plot,
+        extra={"row_length": row_length} if row_length is not None else {},
     )
 
     result = DesignResult(table=table, metadata=meta)

@@ -95,3 +95,29 @@ print(rcbd_result)
 comparisons = ag.tukey_hsd(data, response="yield", treatment="treatment", alpha=0.05)
 print(comparisons)
 ```
+
+
+---
+
+## 5. More designs and tools
+
+```python
+# Latin square, factorial, split-plot
+ag.design.latin_square(n_treatments=4, seed=1)
+ag.design.factorial({"variety": ["V1", "V2"], "nitrogen": ["N0", "N50"]}, replications=3, layout="rcbd")
+ag.design.split_plot(["Rainfed", "Drip"], ["V1", "V2", "V3"], replications=3)
+
+# One entry point for ANOVA
+ag.anova(df, "yield", design="rcbd", treatment="treatment", block="block")
+
+# Pairwise comparisons with letters, using the RCBD error term
+cmp = ag.tukey_hsd(df, "yield", "treatment", block="block")   # or ag.lsd_test / ag.bonferroni
+print(cmp.letters())
+
+# Diagnostics, plots and a report
+diag = ag.residual_diagnostics(df, "yield", "treatment", block="block")
+fig, ax = ag.visualization.plot_means(df, "yield", "treatment", letters=cmp.letters())
+ag.io.write_report("report.md", anova=ag.anova_rcbd(df, "yield", "treatment", "block"), comparison=cmp, diagnostics=diag)
+```
+
+See the scripts in `examples/` (05–08) for complete workflows.

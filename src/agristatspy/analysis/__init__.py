@@ -2,14 +2,34 @@
 agristatspy.analysis — statistical analysis sub-package.
 """
 from agristatspy.analysis.anova import ANOVAResult, anova_crd, anova_rcbd
-from agristatspy.analysis.comparison import ComparisonResult, tukey_hsd
+from agristatspy.analysis.anova_designs import (
+    anova,
+    anova_factorial,
+    anova_latin_square,
+    anova_split_plot,
+)
+from agristatspy.analysis.comparison import (
+    ComparisonResult,
+    bonferroni,
+    lsd_test,
+    tukey_hsd,
+)
+from agristatspy.analysis.diagnostics import DiagnosticsResult, residual_diagnostics
 from agristatspy.analysis.summary import treatment_summary
 
 __all__ = [
     "anova_crd",
     "anova_rcbd",
+    "anova",
+    "anova_latin_square",
+    "anova_factorial",
+    "anova_split_plot",
     "tukey_hsd",
+    "lsd_test",
+    "bonferroni",
     "treatment_summary",
+    "residual_diagnostics",
+    "DiagnosticsResult",
     "ANOVAResult",
     "ComparisonResult",
 ]

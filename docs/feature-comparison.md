@@ -6,7 +6,7 @@ This document compares AgriStatsPy's design and analysis workflow with existing 
 
 ## 1. High-Level Comparison
 
-| Capability | AgriStatsPy (Phase 1) | R `agricolae` | R `doebioresearch` | Python (`scipy` / `statsmodels`) |
+| Capability | AgriStatsPy | R `agricolae` | R `doebioresearch` | Python (`scipy` / `statsmodels`) |
 |---|---|---|---|---|
 | **Ecosystem** | Python (modern packaging) | R | R | Python |
 | **Agricultural Design-to-Analysis Workflow** | Built-in, unified | Built-in | Simplified scripts | Manual data prep & modeling required |
@@ -17,7 +17,7 @@ This document compares AgriStatsPy's design and analysis workflow with existing 
 | **Tidy Data Integration** | Native Pandas DataFrame | Standard R data.frame | Specific column conventions | DataFrame |
 | **ANOVA Model Handling** | Preconfigured CRD / RCBD models | Manual / wrapper | Fixed functions | Explicit formulas (`ols("...").fit()`) |
 | **Residual CV% Reporting** | Standard agricultural convention | Calculated | Calculated | Must calculate manually |
-| **Mean Comparisons** | Tukey HSD (validated) | Tukey, LSD, Duncan, SNK | Tukey, LSD, Duncan | `pairwise_tukeyhsd` |
+| **Mean Comparisons** | Tukey HSD, Fisher LSD, Bonferroni, letter groups | Tukey, LSD, Duncan, SNK | Tukey, LSD, Duncan | `pairwise_tukeyhsd` |
 | **Defensive Input Validation** | Strict type & sanity checks | Basic | Basic | Moderate |
 
 ---

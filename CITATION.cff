@@ -1,0 +1,14 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "AgriStatsPy: experimental design and statistical analysis for agricultural field trials"
+type: software
+version: 0.2.0
+license: MIT
+date-released: 2026-10-24
+repository-code: "https://github.com/agristatspy/agristatspy"
+authors:
+  - name: "AgriStatsPy contributors"
+keywords:
+  - agriculture
+  - experimental design
+  - ANOVA

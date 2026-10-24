@@ -62,8 +62,27 @@ print(design.text_layout(cell_width=16, separator="-"))
 
 ---
 
-## 2. Graphical Layouts (Phase 3)
+## 2. Graphical Layouts
 
-Graphical plot maps using `matplotlib` (such as heatmaps, colored plot cards, and spatial field maps) are scheduled for **Phase 3**.
+`design.plot_layout()` draws one cell per plot, coloured by treatment, with the plot ID and treatment inside each cell. RCBD, factorial-RCBD and split-plot designs get one outlined band per block; Latin squares are drawn as a row × column grid.
 
-Calling `design.plot_layout()` in Phase 1 raises a `NotImplementedError` explaining that graphical layouts are part of Phase 3, directing users to `design.text_layout()`.
+```python
+fig, ax = design.plot_layout()
+fig.savefig("field_layout.png", dpi=300, bbox_inches="tight")
+fig.savefig("field_layout.svg")
+```
+
+Rendering is a view of the assignment table and never changes the randomization. A CRD grid is a numbering convention (use `row_length=` in `crd()` to store row/column positions); it does not model field gradients.
+
+## 3. Result Plots
+
+All functions return `(fig, ax)` and never call `plt.show()`.
+
+| Function | Shows |
+|---|---|
+| `ag.visualization.plot_means(df, y, trt, error="se"/"sd"/"ci95", letters=None)` | Treatment means with the chosen error bars (named on the axis); optional letter groups |
+| `ag.visualization.plot_boxplot(df, y, trt)` | Boxplot with the individual observations |
+| `ag.visualization.plot_interaction(df, y, x, trace)` | Interaction (profile) plot |
+| `ag.visualization.plot_residuals(diagnostics)` | Residuals vs fitted and normal Q–Q plot |
+
+Interaction and residual plots are visual aids; interpret them with the cautions in `statistical-methods.md`.

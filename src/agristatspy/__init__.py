@@ -26,8 +26,20 @@ Quick-start
 >>> comparison = ag.analysis.tukey_hsd(df, response="yield", treatment="treatment")
 >>> print(comparison)
 """
-from agristatspy import analysis, design
-from agristatspy.analysis import anova_crd, anova_rcbd, treatment_summary, tukey_hsd
+from agristatspy import analysis, design, io, visualization
+from agristatspy.analysis import (
+    anova,
+    anova_crd,
+    anova_factorial,
+    anova_latin_square,
+    anova_rcbd,
+    anova_split_plot,
+    bonferroni,
+    lsd_test,
+    residual_diagnostics,
+    treatment_summary,
+    tukey_hsd,
+)
 from agristatspy.exceptions import (
     AgriStatsError,
     AnalysisError,
@@ -36,11 +48,20 @@ from agristatspy.exceptions import (
     ValidationError,
 )
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __all__ = [
     "design",
     "analysis",
+    "io",
+    "visualization",
+    "residual_diagnostics",
+    "anova",
     "anova_crd",
+    "anova_factorial",
+    "anova_latin_square",
+    "anova_split_plot",
+    "lsd_test",
+    "bonferroni",
     "anova_rcbd",
     "tukey_hsd",
     "treatment_summary",

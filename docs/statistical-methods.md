@@ -147,6 +147,38 @@ response ~ C(treatment) + C(block)
 
 ---
 
+### 3.3 Latin square (`anova_latin_square`)
+
+Additive model `y = μ + row + column + treatment + ε` with `(t-1)(t-2)` error df. Assumes no interactions among rows, columns and treatments. Power is low for t < 5.
+
+### 3.4 Factorial (`anova_factorial`)
+
+Fixed-effects model with all main effects and interactions (`A*B*…`), laid out as a CRD or, with `block=`, an RCBD (additive block effect). Requires a balanced layout with error degrees of freedom. When an interaction is significant, interpret main effects cautiously and compare combination means.
+
+### 3.5 Split-plot (`anova_split_plot`)
+
+Main plots in an RCBD: `y = μ + block + A + (block×A) + B + A×B + ε`. The main factor `A` is tested against **Error (a)** (block × A); `B` and `A×B` against **Error (b)**. `cv_pct` reports CV(b); CV(a) appears in the notes. Requires a complete, balanced layout.
+
+### 3.6 Dispatcher
+
+`ag.anova(df, response, design="crd"|"rcbd"|"latin_square"|"factorial"|"split_plot", ...)` calls the functions above.
+
+## 4b. Further mean-comparison procedures
+
+All procedures use the design's error mean square: pooled one-way (CRD), or the additive treatment + blocks model when `block=` is given (a column name, or `["row", "column"]` for a Latin square).
+
+- **Tukey HSD** — studentized range distribution; Tukey–Kramer for unequal n. Verified against `statsmodels.pairwise_tukeyhsd`.
+- **Fisher's LSD** (`lsd_test`) — unadjusted t-tests. Does **not** control the family-wise error rate; use only after a significant F-test and for few planned comparisons.
+- **Bonferroni** (`bonferroni`) — p-values multiplied by the number of comparisons (capped at 1). Conservative.
+
+### Compact letters
+
+`result.letters()` returns letter groups from the pairwise decisions: treatments are ordered by mean and sharing a letter means "not significantly different". Letter displays can have more than one valid arrangement; the pairwise table is authoritative.
+
+## 4c. Residual diagnostics
+
+`ag.residual_diagnostics(df, response, treatment, block=None)` returns residuals, fitted values, a Shapiro–Wilk test of normality and a Brown–Forsythe (median-centered Levene) test of equal variances. A non-significant test does not prove an assumption holds; a significant one is a prompt to investigate, not to delete observations. Outliers are never removed automatically.
+
 ## 5. Statistical safety notices
 
 The following notices apply to all analysis functions in AgriStatsPy:
