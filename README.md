@@ -1,196 +1,145 @@
 # AgriStatsPy
 
-**Agricultural experimental design and statistical analysis for Python.**
+[![CI](https://github.com/agristatspy/agristatspy/actions/workflows/ci.yml/badge.svg)](https://github.com/agristatspy/agristatspy/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.10%20|%203.11%20|%203.12-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-AgriStatsPy helps agricultural students and researchers create, randomize, visualize, analyze, and report common field-trial designs — without writing lengthy statistical code for every experiment.
+**Experimental design and statistical analysis for agricultural field trials in Python.**
 
----
+AgriStatsPy provides a consistent, well-documented API for generating randomized
+field layouts and analyzing the resulting data. It is built for agronomy
+students, researchers, and extension professionals who need reproducible,
+statistically sound results without writing boilerplate for every experiment.
 
-## Features (Phase 1 — MVP)
+## Features
 
-| Feature | Status |
-|---|---|
-| Completely Randomized Design (CRD) | ✅ |
-| Randomized Complete Block Design (RCBD) | ✅ |
-| Reproducible randomization (seed) | ✅ |
-| Text layout with block separators | ✅ |
-| CSV export | ✅ |
-| Excel export (optional `openpyxl`) | ✅ |
-| Descriptive statistics & CV | ✅ |
-| One-way ANOVA (CRD) | ✅ |
-| Two-way additive ANOVA (RCBD) | ✅ |
-| Tukey HSD mean comparisons | ✅ |
-| Graphical layout | 🔜 Phase 3 |
-
----
+- **Design generation** — Completely Randomized Design (CRD) and Randomized Complete Block Design (RCBD) with reproducible, seeded randomization.
+- **Field layouts** — printable text layouts with block separators; export to CSV or Excel.
+- **Descriptive statistics** — per-treatment summaries and coefficient of variation.
+- **Analysis of variance** — one-way ANOVA (CRD) and two-way additive ANOVA (RCBD), with CV% and explicit model assumptions.
+- **Mean comparison** — Tukey HSD pairwise comparisons with simultaneous confidence intervals.
+- **Strict validation** — invalid inputs and incomplete data raise clear, package-specific exceptions.
 
 ## Installation
 
+Requires Python 3.10 or later.
+
 ```bash
 pip install agristatspy
-# With Excel export support:
-pip install agristatspy[excel]
+
+# Optional: Excel export
+pip install "agristatspy[excel]"
 ```
 
-> **Note:** The package name on PyPI is provisional pending availability checks.
+To install from source:
 
----
+```bash
+git clone https://github.com/agristatspy/agristatspy.git
+cd agristatspy
+pip install -e ".[dev]"
+```
 
-## Quick-start
+See [docs/installation.md](docs/installation.md) for details.
 
-### Design generation
+## Quick start
+
+### Generate a design
 
 ```python
 import agristatspy as ag
 
 # Completely Randomized Design
-design = ag.design.crd(
-    treatments=["Control", "N50", "N100"],
-    replications=4,
-    seed=12,
-)
-print(design.text_layout())
+crd = ag.design.crd(treatments=["Control", "N50", "N100"], replications=4, seed=12)
+print(crd.text_layout())
 
-# Randomized Complete Block Design
-design = ag.design.rcbd(
+# Randomized Complete Block Design (replications = number of blocks)
+rcbd = ag.design.rcbd(
     treatments=["Control", "N50", "N100", "N150"],
     replications=3,
     seed=42,
 )
-print(design.text_layout())
+print(rcbd.text_layout())
 
-# Export the field plan
-design.to_csv("field_layout.csv")
+rcbd.to_csv("field_layout.csv")
 ```
 
-### Analysis
+### Analyze data
 
 ```python
-import pandas as pd
 import agristatspy as ag
+from agristatspy.datasets import load_rcbd_example
 
-df = pd.read_csv("observations.csv")
+df = load_rcbd_example()
 
-# Descriptive statistics
-summary = ag.treatment_summary(df, response="yield", treatment="treatment")
-print(summary)
-
-# ANOVA
-result = ag.anova_crd(df, response="yield", treatment="treatment")
-print(result)
-
-# RCBD ANOVA
-result = ag.anova_rcbd(df, response="yield", treatment="treatment", block="block")
-print(result)
-
-# Tukey HSD
-comparison = ag.tukey_hsd(df, response="yield", treatment="treatment")
-print(comparison)
+print(ag.treatment_summary(df, response="yield", treatment="treatment"))
+print(ag.anova_rcbd(df, response="yield", treatment="treatment", block="block"))
+print(ag.tukey_hsd(df, response="yield", treatment="treatment"))
 ```
 
-### Using built-in example data
+For a CRD, use `ag.anova_crd(df, response=..., treatment=...)`.
 
-```python
-from agristatspy.datasets import load_crd_example, load_rcbd_example
+## API overview
 
-df_crd = load_crd_example()
-df_rcbd = load_rcbd_example()
-```
-
----
-
-## Design API
-
-### CRD
-
-```python
-ag.design.crd(
-    treatments=None,     # list of label strings, or None
-    n_treatments=None,   # int, used when treatments is not supplied
-    replications=1,      # positive int — units per treatment
-    seed=None,           # int or None
-    plot_prefix="P",     # plot-ID prefix
-    start_plot=1,        # first plot number
-)
-```
-
-### RCBD
-
-```python
-ag.design.rcbd(
-    treatments=None,     # list of label strings, or None
-    n_treatments=None,   # int
-    replications=1,      # positive int — number of complete blocks
-    seed=None,           # int or None
-    plot_prefix="P",     # plot-ID prefix
-    start_plot=1,        # first plot number
-)
-```
-
-### DesignResult object
-
-| Attribute / Method | Description |
+| Function | Purpose |
 |---|---|
-| `design.table` | Assignment DataFrame (copy) |
-| `design.metadata` | Immutable design parameters |
-| `design.validate()` | Run invariant checks |
-| `design.summary()` | Human-readable treatment-frequency summary |
-| `design.text_layout(...)` | Printable field layout string |
-| `design.to_csv(path)` | Export to CSV |
-| `design.to_excel(path)` | Export to Excel (requires `openpyxl`) |
+| `ag.design.crd(...)` | Generate a Completely Randomized Design |
+| `ag.design.rcbd(...)` | Generate a Randomized Complete Block Design |
+| `ag.treatment_summary(...)` | Per-treatment descriptive statistics and CV% |
+| `ag.anova_crd(...)` | One-way ANOVA |
+| `ag.anova_rcbd(...)` | Two-way additive ANOVA (treatment + block) |
+| `ag.tukey_hsd(...)` | Tukey HSD pairwise comparisons |
 
----
+Design functions share the parameters `treatments`, `n_treatments`,
+`replications`, `seed`, `plot_prefix`, and `start_plot`, and return a
+`DesignResult` with:
 
-## Statistical methods
+| Member | Description |
+|---|---|
+| `.table` | Assignment table (a copy) |
+| `.metadata` | Immutable design parameters |
+| `.validate()` | Check design invariants |
+| `.summary()` | Treatment-frequency summary |
+| `.text_layout(...)` | Printable field layout |
+| `.to_csv(path)` / `.to_excel(path)` | Export the assignment table |
 
-See [`docs/statistical-methods.md`](docs/statistical-methods.md) for full descriptions of the models, assumptions, and limitations.
+## Statistical notes
 
-### Important notices
-
-- A significant F-test shows that treatment means are not all equal; it does not identify which treatments differ. Use Tukey HSD for pairwise comparisons.
+- A significant F-test shows that treatment means are not all equal; it does not say which differ. Follow with a post-hoc comparison.
 - Statistical significance does not establish agronomic importance.
-- The standard RCBD model does not estimate a treatment-by-block interaction.
-- CV% = √(MS_error) / grand_mean × 100 (agricultural convention).
-- Missing observations are reported, not silently removed.
+- The additive RCBD model does not estimate a treatment-by-block interaction.
+- `CV% = √MS_error / grand mean × 100`.
+- Observations with missing responses are reported. `anova_rcbd` requires a complete layout (one observation per treatment–block combination).
 
----
+Full model descriptions, assumptions, and limitations:
+[docs/statistical-methods.md](docs/statistical-methods.md).
 
-## Repository structure
+## Documentation
 
-```
-agristatspy/
-├── src/agristatspy/
-│   ├── design/       # CRD, RCBD generators, validation
-│   ├── visualization/# Text layout rendering
-│   ├── analysis/     # ANOVA, Tukey HSD, descriptive stats
-│   ├── io/           # Export helpers
-│   ├── datasets/     # Built-in example data
-│   └── exceptions.py # Package exception hierarchy
-├── tests/            # pytest test suite
-├── examples/         # Runnable end-to-end scripts
-└── docs/             # Documentation
-```
+- [Installation](docs/installation.md)
+- [Quickstart](docs/quickstart.md)
+- [Design guide](docs/design-guide.md)
+- [Statistical methods](docs/statistical-methods.md)
+- [Visualization](docs/visualization.md)
+- [Feature comparison](docs/feature-comparison.md)
+- [Examples](examples/)
 
----
-
-## Testing
+## Development
 
 ```bash
+pip install -e ".[dev]"
 pytest
+ruff check src tests examples
 ```
-
----
-
-## License
-
-MIT License — see [LICENSE](LICENSE).
-
----
 
 ## Contributing
 
-Contributions are welcome. Please open an issue before submitting a pull request, especially for new statistical features. All new features must have:
+Contributions are welcome. Please open an issue before submitting a pull
+request, especially for new statistical methods. New features should include:
 
-- A defined statistical method, assumptions, and limitations.
-- Tests against hand-checkable reference values.
-- Documentation updated in the same PR.
+- a defined method, with its assumptions and limitations;
+- tests against hand-checkable reference values;
+- documentation updates in the same pull request.
+
+## License
+
+Released under the [MIT License](LICENSE).
