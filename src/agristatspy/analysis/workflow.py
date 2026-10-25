@@ -31,6 +31,7 @@ from agristatspy.analysis.anova_designs import anova
 from agristatspy.analysis.comparison import (
     ComparisonResult,
     bonferroni,
+    dmrt,
     lsd_test,
     tukey_hsd,
 )
@@ -48,7 +49,47 @@ _DESIGNS = {
     "factorial": "factorial",
     "split_plot": "split_plot", "splitplot": "split_plot",
 }
-_POSTHOC = {"tukey": tukey_hsd, "lsd": lsd_test, "bonferroni": bonferroni}
+_POSTHOC = {"tukey": tukey_hsd, "lsd": lsd_test, "dmrt": dmrt, "bonferroni": bonferroni}
+_POSTHOC_MENU = [*_POSTHOC, "all", "none"]
+
+
+def _resolve_posthoc(posthoc) -> list[str] | None:
+    """Normalise ``posthoc`` to a list of method keys, ``[]`` for none, or
+    ``None`` meaning "ask the user".  Raises for unknown names."""
+    if posthoc is None:
+        return []
+    items = [posthoc] if isinstance(posthoc, str) else list(posthoc)
+    keys = [str(i).lower().strip() for i in items]
+    if keys == ["ask"]:
+        return None
+    if keys == ["none"]:
+        return []
+    if "all" in keys:
+        return list(_POSTHOC)
+    bad = [k for k in keys if k not in _POSTHOC]
+    if bad or not keys:
+        raise AnalysisError(
+            f"posthoc must be one or more of {sorted(_POSTHOC)}, 'all', 'ask' or None; got {posthoc!r}."
+        )
+    return list(dict.fromkeys(keys))
+
+
+def _ask_posthoc(ask: Callable[[str], str] | None) -> list[str] | None:
+    """Prompt for the post-hoc test(s); ``None`` if no way to ask."""
+    if ask is None and sys.stdin is not None and sys.stdin.isatty():
+        ask = input
+    if ask is None:
+        return None
+    opts = ", ".join(f"{i}={k}" for i, k in enumerate(_POSTHOC_MENU, 1))
+    reply = ask(
+        f"Mean comparison [{opts}] (comma-separate to pick several): "
+    ).strip().lower()
+    chosen: list[str] = []
+    for tok in (t.strip() for t in reply.split(",")):
+        if tok.isdigit() and 1 <= int(tok) <= len(_POSTHOC_MENU):
+            tok = _POSTHOC_MENU[int(tok) - 1]
+        chosen.append(tok)
+    return _resolve_posthoc(chosen)
 _NON_EFFECT = {"Block", "Row", "Column", "Error", "Error (a)", "Error (b)", "Total"}
 _CELL_SEP = " | "
 
@@ -75,7 +116,9 @@ class AnalysisReport:
         ``True``/``False`` from the Shapiro–Wilk test at ``normality_alpha``,
         or ``None`` when it could not be computed.
     anova, comparison:
-        Results, or ``None`` when not run.
+        Results, or ``None`` when not run.  ``comparison`` is the first
+        post-hoc selected; ``comparisons`` holds every one run, keyed by
+        method (``"tukey"``, ``"lsd"``, ``"dmrt"``, ``"bonferroni"``).
     stats:
         Dict with ``grand_mean``, ``cv_pct``, ``sem_pooled`` (SEm±),
         ``cd`` (critical difference at α), ``alpha``, ``mse``, ``df_error``.
@@ -95,6 +138,7 @@ class AnalysisReport:
     normal: bool | None
     anova: ANOVAResult | None = None
     comparison: ComparisonResult | None = None
+    comparisons: dict[str, ComparisonResult] = field(default_factory=dict)
     stats: dict = field(default_factory=dict)
     means: pd.DataFrame | None = None
     flagged: pd.DataFrame | None = None
@@ -134,7 +178,11 @@ class AnalysisReport:
                 ],
             }
         )
-        if "group" in m:
+        gcols = [c for c in m.columns if c.startswith("group_")]
+        if len(gcols) > 1:
+            for c in gcols:
+                out[f"Group ({self.comparisons[c[6:]].method})"] = m[c].values
+        elif "group" in m:
             out["Group"] = m["group"].values
         if footer:
             rows = []
@@ -149,8 +197,8 @@ class AnalysisReport:
                 rows.append((f"ANOVA p ({src})", _fmt_p(pv)))
             for label, val in rows:
                 row = {"Treatment": label, "Mean ± SEM": val}
-                if "Group" in out:
-                    row["Group"] = ""
+                for c in out.columns[2:]:
+                    row[c] = ""
                 out = pd.concat([out, pd.DataFrame([row])], ignore_index=True)
         return out
 
@@ -184,7 +232,10 @@ class AnalysisReport:
             out["Means (numeric)"] = self.means
         if self.anova is not None:
             out["ANOVA"] = self.anova_table()
-        if self.comparison is not None:
+        if len(self.comparisons) > 1:
+            for c in self.comparisons.values():
+                out[f"Pairwise {c.method}"[:31]] = c.table
+        elif self.comparison is not None:
             out["Pairwise"] = self.comparison.table
         out["Summary"] = pd.DataFrame(
             {
@@ -299,12 +350,13 @@ class AnalysisReport:
                 self.anova_table().to_string(index=False),
             ]
         if self.means is not None:
+            names = ", ".join(c.method for c in self.comparisons.values())
             lines += ["", "3. Treatment means (mean ± SEM" + (", letters from "
-                      + self.comparison.method if self.comparison else "") + ")", "",
+                      + names if self.comparison else "") + ")", "",
                       self.thesis_table().to_string(index=False)]
             if self.comparison is not None:
                 lines += ["", "   Means sharing a letter are not significantly different "
-                          f"({self.comparison.method}, α = {self.comparison.alpha})."]
+                          f"({names}, α = {self.comparison.alpha})."]
         lines += ["", "Statistical significance does not imply agronomic importance."]
         return "\n".join(lines)
 
@@ -466,8 +518,7 @@ def _execute(
         raise AnalysisError(
             f"Unknown design {design!r}. Choose from: crd, rcbd, latin_square, factorial, split_plot."
         )
-    if posthoc not in _POSTHOC and posthoc is not None:
-        raise AnalysisError(f"posthoc must be one of {sorted(_POSTHOC)} or None; got {posthoc!r}.")
+    methods = _resolve_posthoc(posthoc)
     if posthoc_when not in ("significant", "always"):
         raise AnalysisError("posthoc_when must be 'significant' or 'always'.")
     if on_nonnormal not in ("ask", "proceed", "review", "stop"):
@@ -558,7 +609,7 @@ def _execute(
             "Post-hoc letters are not produced for split-plot designs: comparisons "
             "need the correct error term for each factor (not yet supported)."
         )
-    elif posthoc is None:
+    elif methods == []:
         pass
     elif posthoc_when == "significant" and not significant:
         report.messages.append(
@@ -566,10 +617,21 @@ def _execute(
         )
     else:
         blocks = {"crd": None, "rcbd": block, "latin_square": [row, column], "factorial": block}[key]
-        comp = _POSTHOC[posthoc](work, response, group, alpha=alpha, block=blocks)
-        report.comparison = comp
-        if posthoc == "lsd" and not significant:
-            report.messages.append("LSD run without a significant F-test; interpret with caution.")
+        if methods is None:
+            methods = _ask_posthoc(ask)
+            if methods is None:
+                methods = ["tukey"]
+                report.messages.append(
+                    "posthoc='ask' needs an interactive terminal or an ask= function; "
+                    "using Tukey HSD."
+                )
+        for m in methods:
+            report.comparisons[m] = _POSTHOC[m](work, response, group, alpha=alpha, block=blocks)
+        comp = report.comparison = next(iter(report.comparisons.values()), None)
+        if not significant and {"lsd", "dmrt"} & set(methods):
+            report.messages.append(
+                "LSD/DMRT run without a significant F-test; interpret with caution."
+            )
         if key == "factorial":
             report.messages.append(
                 "Letters compare factor-level combinations (cell means). If the interaction "
@@ -591,9 +653,12 @@ def _execute(
         }
     )
     means["sem"] = means["sd"] / np.sqrt(means["n"])
+    for m, c in report.comparisons.items():
+        lt = c.letters()
+        lm = dict(zip(lt["treatment"], lt["group"], strict=True))
+        means[f"group_{m}"] = means["treatment"].map(lm)
     if comp is not None:
-        lm = dict(zip(comp.letters()["treatment"], comp.letters()["group"], strict=True))
-        means["group"] = means["treatment"].map(lm)
+        means["group"] = means[f"group_{next(iter(report.comparisons))}"]
     report.means = means
 
     s: dict = {"alpha": alpha, "grand_mean": res.grand_mean, "cv_pct": res.cv_pct, "p_effects": pvals}
@@ -621,7 +686,7 @@ def analyze(
     sub: str | None = None,
     alpha: float = 0.05,
     normality_alpha: float = 0.05,
-    posthoc: str | None = "tukey",
+    posthoc: str | list[str] | None = "tukey",
     posthoc_when: str = "significant",
     on_nonnormal: str = "ask",
     ask: Callable[[str], str] | None = None,
@@ -649,7 +714,10 @@ def analyze(
     normality_alpha:
         Shapiro–Wilk threshold below which residuals are called non-normal.
     posthoc:
-        ``"tukey"`` (default), ``"lsd"``, ``"bonferroni"`` or ``None``.
+        Mean-comparison test(s): ``"tukey"`` (default), ``"lsd"``, ``"dmrt"``,
+        ``"bonferroni"``, a list such as ``["lsd", "dmrt"]``, ``"all"`` (run
+        every test and report each side by side), ``"ask"`` (prompt in an
+        interactive terminal, or via ``ask=``) or ``None`` to skip.
     posthoc_when:
         ``"significant"`` (default) runs the post-hoc only when an ANOVA
         effect is significant; ``"always"`` runs it regardless.

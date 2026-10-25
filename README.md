@@ -18,7 +18,7 @@ statistically sound results without writing boilerplate for every experiment.
 - **Descriptive statistics** — per-treatment summaries and coefficient of variation.
 - **One-command analysis** — `ag.analyze` chains normality check → ANOVA → post-hoc letters → mean ± SEM, SEm±, CD and CV%, with thesis-ready export (Excel, CSV, Markdown, HTML, LaTeX).
 - **Analysis of variance** — CRD, RCBD, Latin square, factorial and split-plot ANOVA (with correct split-plot error terms), CV%, and explicit model assumptions; `ag.anova(...)` dispatches by design.
-- **Mean comparison** — Tukey HSD, Fisher's LSD and Bonferroni, using the design's own error term, with compact letter displays.
+- **Mean comparison** — Tukey HSD, Fisher's LSD, Duncan's DMRT and Bonferroni, using the design's own error term, with compact letter displays.
 - **Diagnostics and plots** — residual normality/variance checks, mean, box, interaction and residual plots.
 - **Reports and Excel export** — Markdown, HTML and multi-sheet Excel workbooks of designs, ANOVA, comparisons and diagnostics.
 - **Strict validation** — invalid inputs and incomplete data raise clear, package-specific exceptions.
@@ -80,6 +80,13 @@ report.thesis_table()              # Mean ± SEM with letters, ready for a paper
 report.export("results.xlsx")      # also .csv, .md, .html (Word), .tex
 ```
 
+Choose the mean-comparison test with `posthoc=`: `"tukey"` (default), `"lsd"`, `"dmrt"`, `"bonferroni"`, a list like `["lsd", "dmrt"]`, `"all"` (every test, letters side by side), `"ask"` (prompts you) or `None`.
+
+```python
+report = ag.analyze(df, "yield", "rcbd", treatment="treatment", block="block", posthoc="all")
+report.comparisons["dmrt"]         # each test's full pairwise table
+```
+
 `analyze` runs Shapiro–Wilk on the residuals first. If they are not normal it asks whether to proceed or review the data (in scripts it pauses; call `report.proceed()` to continue). Nothing is dropped or transformed automatically.
 
 ### Step-by-step analysis
@@ -105,7 +112,7 @@ For a CRD, use `ag.anova_crd(df, response=..., treatment=...)`.
 | `ag.treatment_summary(...)` | Per-treatment descriptive statistics and CV% |
 | `ag.analyze(...)` | Whole workflow in one call, with export |
 | `ag.anova(...)`, `anova_crd`, `anova_rcbd`, `anova_latin_square`, `anova_factorial`, `anova_split_plot` | Analysis of variance |
-| `ag.tukey_hsd`, `ag.lsd_test`, `ag.bonferroni` | Pairwise comparisons (`.letters()` for groupings) |
+| `ag.tukey_hsd`, `ag.lsd_test`, `ag.dmrt`, `ag.bonferroni` | Pairwise comparisons (`.letters()` for groupings) |
 | `ag.residual_diagnostics(...)` | Residuals, Shapiro–Wilk, Brown–Forsythe |
 | `ag.visualization.plot_*` | Layout, means, box, interaction and residual plots |
 | `ag.io.write_report(...)`, `ag.io.write_excel(...)` | Markdown / HTML report; multi-sheet Excel workbook |

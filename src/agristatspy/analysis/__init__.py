@@ -11,6 +11,7 @@ from agristatspy.analysis.anova_designs import (
 from agristatspy.analysis.comparison import (
     ComparisonResult,
     bonferroni,
+    dmrt,
     lsd_test,
     tukey_hsd,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "tukey_hsd",
     "lsd_test",
     "bonferroni",
+    "dmrt",
     "treatment_summary",
     "residual_diagnostics",
     "DiagnosticsResult",

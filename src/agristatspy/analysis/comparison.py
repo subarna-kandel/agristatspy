@@ -1,5 +1,5 @@
 """
-Treatment-mean comparisons — Tukey HSD, Fisher's LSD, and Bonferroni.
+Treatment-mean comparisons — Tukey HSD, Fisher's LSD, Duncan's DMRT, and Bonferroni.
 
 All procedures use the pooled error mean square (MSE) of the experimental
 design: the one-way error for a CRD, or the additive treatment + block error
@@ -216,10 +216,19 @@ def _pairwise(
     k = len(means)
     n_pairs = k * (k - 1) // 2
     rows = []
+    rank = {t: i for i, t in enumerate(means.sort_values(ascending=False, kind="stable").index)}
     for g1, g2 in itertools.combinations(sorted(means.index), 2):
         diff = float(means[g2] - means[g1])
         inv_n = 1.0 / counts[g1] + 1.0 / counts[g2]
-        if method == "tukey":
+        if method == "dmrt":
+            # Duncan: means r steps apart are tested at 1 - (1 - alpha)^(r - 1).
+            r = abs(rank[g1] - rank[g2]) + 1
+            se = np.sqrt(mse / 2.0 * inv_n)
+            q = abs(diff) / se if se > 0 else np.inf
+            sf = float(stats.studentized_range.sf(q, r, dfe)) if np.isfinite(q) else 0.0
+            p = 1.0 - (1.0 - sf) ** (1.0 / (r - 1))
+            half = float(stats.studentized_range.ppf((1 - alpha) ** (r - 1), r, dfe)) * se
+        elif method == "tukey":
             se = np.sqrt(mse / 2.0 * inv_n)
             q = abs(diff) / se if se > 0 else np.inf
             p = float(stats.studentized_range.sf(q, k, dfe)) if np.isfinite(q) else 0.0
@@ -393,4 +402,33 @@ def bonferroni(
         "bonferroni", "Bonferroni", "bonferroni", data, response, treatment, alpha, block,
         "Method: Bonferroni-adjusted pairwise t-tests.\n"
         f"Family-wise error rate is controlled at α = {alpha} (conservative).",
+    )
+
+
+def dmrt(
+    data: pd.DataFrame,
+    response: str,
+    treatment: str,
+    alpha: float = 0.05,
+    block: str | list[str] | None = None,
+) -> ComparisonResult:
+    """Duncan's Multiple Range Test (DMRT).
+
+    Compares treatment means using the studentized range, with the critical
+    value depending on how many ranks apart two means are: means ``r`` steps
+    apart are tested at a per-comparison level of ``1 - (1 - alpha)**(r - 1)``.
+    Widely used in agricultural reporting.
+
+    .. warning::
+       DMRT is more liberal than Tukey HSD and does not control the
+       family-wise error rate at *alpha*.  ``p_adj`` is the p-value for the
+       rank-specific test, so ``reject`` is ``p_adj < alpha``.
+
+    Parameters and returns are as for :func:`tukey_hsd`.
+    """
+    return _run(
+        "dmrt", "Duncan DMRT", "dmrt", data, response, treatment, alpha, block,
+        "Method: Duncan's Multiple Range Test (rank-dependent critical ranges).\n"
+        "WARNING: more liberal than Tukey HSD; the family-wise error rate is NOT\n"
+        "  controlled at α.  Use after a significant overall F-test.",
     )

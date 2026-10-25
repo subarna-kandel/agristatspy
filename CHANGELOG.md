@@ -4,6 +4,14 @@ All notable changes to this project are documented here. The project follows
 [Semantic Versioning](https://semver.org/) and the
 [Keep a Changelog](https://keepachangelog.com/) format.
 
+## [Unreleased]
+
+### Added
+- `ag.dmrt` — Duncan's Multiple Range Test (CRD, RCBD, Latin square error terms).
+- `ag.analyze(posthoc=...)` now accepts `"dmrt"`, a list of tests, `"all"` or
+  `"ask"`; every test run is kept in `report.comparisons` and shown side by side
+  in the thesis table and exports.
+
 ## [0.2.0] - 2026-10-24
 
 ### Added

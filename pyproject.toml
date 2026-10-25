@@ -46,7 +46,7 @@ dev = [
 ]
 
 [project.urls]
-Repository = "https://github.com/agristatspy/agristatspy"
+Repository = "https://github.com/subarna-kandel/agristatspy"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agristatspy"]
