@@ -21,6 +21,8 @@ def validate_design(design: object) -> None:
         _validate_latin_square(design)
     elif dtype == "SplitPlot":
         _validate_split_plot(design)
+    elif dtype == "AlphaLattice":
+        _validate_alpha_lattice(design)
     else:
         raise ValidationError(f"No validator defined for design type {dtype!r}.")
 
@@ -145,3 +147,30 @@ def _validate_split_plot(design: object) -> None:
             raise ValidationError(
                 f"Main plot {mp} does not contain each sub-plot level exactly once."
             )
+
+
+def _validate_alpha_lattice(design: object) -> None:
+    """Validate alpha-lattice invariants."""
+    meta = design.metadata  # type: ignore[attr-defined]
+    tbl = design.table  # type: ignore[attr-defined]
+    k = meta.extra["block_size"]
+    s = meta.extra["blocks_per_rep"]
+    expected = set(meta.treatments)
+
+    if len(tbl) != meta.n_treatments * meta.replications:
+        raise ValidationError(
+            f"Alpha lattice expected {meta.n_treatments * meta.replications} plots; "
+            f"found {len(tbl)}."
+        )
+    if tbl["plot_id"].nunique() != len(tbl):
+        raise ValidationError("Plot IDs are not unique in the alpha-lattice design.")
+    for rep, rdf in tbl.groupby("replicate"):
+        if len(rdf) != len(expected) or set(rdf["treatment"]) != expected:
+            raise ValidationError(f"Replicate {rep} does not contain each treatment exactly once.")
+        if rdf["block"].nunique() != s:
+            raise ValidationError(f"Replicate {rep} does not have {s} blocks.")
+        for blk, bdf in rdf.groupby("block"):
+            if len(bdf) != k:
+                raise ValidationError(
+                    f"Replicate {rep}, block {blk} has {len(bdf)} plots; expected {k}."
+                )

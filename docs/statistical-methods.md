@@ -198,3 +198,28 @@ The following notices apply to all analysis functions in AgriStatsPy:
 - Montgomery, D. C. (2017). *Design and Analysis of Experiments* (9th ed.). Wiley.
 - Steel, R. G. D., Torrie, J. H., & Dickey, D. A. (1997). *Principles and Procedures of Statistics: A Biometrical Approach* (3rd ed.). McGraw-Hill.
 - Tukey, J. W. (1949). Comparing individual means in the analysis of variance. *Biometrics*, 5(2), 99–114.
+
+
+## Alpha lattice, multiple environments and genetic parameters
+
+**Alpha lattice.** `alpha_lattice` builds each replicate from the cyclic alpha(0,1)
+generating array and randomizes labels, blocks and plots. `anova_alpha_lattice`
+fits replicates and blocks (nested in replicates) as fixed effects and tests
+treatments after adjusting for blocks; adjusted means are least-squares means and
+each pair of means has its own standard error of difference. Inter-block
+information is not recovered (no REML). Relative efficiency is
+`MSE(RCBD) / MSE(lattice) × 100`.
+
+**Combined analysis over environments.** For a balanced RCBD in each environment the
+sources are Environment, Block(Environment), Treatment, Treatment × Environment and
+pooled Error. With random environments (default) treatment is tested against
+Treatment × Environment; with fixed environments against the pooled error.
+Bartlett's test compares the environments' error variances before pooling; it is
+sensitive to non-normality, so inspect the per-environment error mean squares too.
+AMMI, GGE and stability regression are not implemented.
+
+**Genetic parameters.** Method-of-moments variance components from the ANOVA mean
+squares: `σ²g = (MSg − MSe)/r`, `σ²p = σ²g + σ²e`, `h² = σ²g/σ²p`,
+`GA = k·σp·h²`. Over environments, `σ²g = (MSg − MSge)/(re)` and
+`σ²p = σ²g + σ²ge/e + σ²e/(re)`. Negative components are set to zero. Heritability
+describes the population and environments sampled, not a fixed property of a trait.

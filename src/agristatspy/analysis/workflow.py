@@ -26,6 +26,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from agristatspy.analysis.alpha_lattice import anova_alpha_lattice
 from agristatspy.analysis.anova import ANOVAResult
 from agristatspy.analysis.anova_designs import anova
 from agristatspy.analysis.comparison import (
@@ -40,6 +41,8 @@ from agristatspy.analysis.diagnostics import (
     diagnostics_from_fitted,
     residual_diagnostics,
 )
+from agristatspy.analysis.genetics import GeneticParameters, genetic_parameters
+from agristatspy.analysis.multi_env import multi_environment
 from agristatspy.analysis.summary import _check_columns, _check_numeric
 from agristatspy.exceptions import AnalysisError, ExportError
 
@@ -139,6 +142,7 @@ class AnalysisReport:
     anova: ANOVAResult | None = None
     comparison: ComparisonResult | None = None
     comparisons: dict[str, ComparisonResult] = field(default_factory=dict)
+    genetics: GeneticParameters | None = None
     stats: dict = field(default_factory=dict)
     means: pd.DataFrame | None = None
     flagged: pd.DataFrame | None = None
@@ -237,6 +241,8 @@ class AnalysisReport:
                 out[f"Pairwise {c.method}"[:31]] = c.table
         elif self.comparison is not None:
             out["Pairwise"] = self.comparison.table
+        if self.genetics is not None:
+            out["Genetic parameters"] = self.genetics.table
         out["Summary"] = pd.DataFrame(
             {
                 "statistic": [
@@ -357,6 +363,8 @@ class AnalysisReport:
             if self.comparison is not None:
                 lines += ["", "   Means sharing a letter are not significantly different "
                           f"({names}, α = {self.comparison.alpha})."]
+        if self.genetics is not None:
+            lines += ["", "4. " + str(self.genetics)]
         lines += ["", "Statistical significance does not imply agronomic importance."]
         return "\n".join(lines)
 
@@ -506,18 +514,22 @@ def _prompt_user(diag: DiagnosticsResult, ask: Callable[[str], str]) -> str:
 def _execute(
     data, response, design, treatment, block, row, column, factors, main, sub,
     alpha, normality_alpha, posthoc, posthoc_when, on_nonnormal, ask, decimals,
+    genetics=False, genetic_k=2.06,
 ) -> AnalysisReport:
     call = {
         "data": data, "response": response, "design": design, "treatment": treatment, "block": block,
         "row": row, "column": column, "factors": factors, "main": main, "sub": sub, "alpha": alpha,
         "normality_alpha": normality_alpha, "posthoc": posthoc, "posthoc_when": posthoc_when,
         "on_nonnormal": on_nonnormal, "ask": ask, "decimals": decimals,
+        "genetics": genetics, "genetic_k": genetic_k,
     }
     key = _DESIGNS.get(str(design).lower().replace("-", "_").replace(" ", "_"))
     if key is None:
         raise AnalysisError(
             f"Unknown design {design!r}. Choose from: crd, rcbd, latin_square, factorial, split_plot."
         )
+    if genetics:
+        _check_genetics_design(key)
     methods = _resolve_posthoc(posthoc)
     if posthoc_when not in ("significant", "always"):
         raise AnalysisError("posthoc_when must be 'significant' or 'always'.")
@@ -670,12 +682,86 @@ def _execute(
             cd=float(stats.t.ppf(1 - alpha / 2, dfe) * np.sqrt(2 * mse / r)),
         )
     report.stats = s
+    if genetics:
+        report.genetics = _genetics(data, [response], key, treatment, block, None, genetic_k)
     return report
+
+
+def _check_genetics_design(key: str | None) -> None:
+    if key not in ("crd", "rcbd"):
+        raise AnalysisError(
+            "genetics=True needs a replicated genotype trial: design 'crd' or 'rcbd' "
+            "(optionally with environment=)."
+        )
+
+
+def _genetics(data, responses, key, treatment, block, environment, k) -> GeneticParameters:
+    """Genetic parameters for the analysis' own treatment / block / environment columns."""
+    _check_genetics_design(key)
+    return genetic_parameters(
+        data, list(responses), treatment, replication=block if key == "rcbd" else None,
+        environment=environment, k=k,
+    )
+
+
+def _special(
+    data, response, key, treatment, block, replicate, environment, environment_effect,
+    alpha, posthoc, posthoc_when, ask, decimals, genetics=False, genetic_k=2.06,
+):
+    """Alpha-lattice and multi-environment branches of :func:`analyze`."""
+    methods = _resolve_posthoc(posthoc)
+    if key == "alpha_lattice":
+        missing = [k for k, v in (("treatment", treatment), ("replicate", replicate),
+                                  ("block", block)) if v is None]
+        if missing:
+            raise AnalysisError(
+                f"analyze(design='alpha_lattice') requires: {', '.join(missing)}."
+            )
+        if environment is not None:
+            raise AnalysisError("analyze: alpha_lattice with 'environment' is not supported.")
+        res = anova_alpha_lattice(data, response, treatment, replicate, block,
+                                  alpha=alpha, decimals=decimals)
+        p = float(res.anova.table.set_index("source").loc["Treatment (adj.)", "p_value"])
+    else:
+        if key not in ("crd", "rcbd"):
+            raise AnalysisError(
+                "analyze: 'environment' (multi-location / multi-year) supports design "
+                "'crd' or 'rcbd' only."
+            )
+        if treatment is None or (key == "rcbd" and block is None):
+            raise AnalysisError(
+                f"analyze(design={key!r}, environment=...) requires: treatment"
+                + (", block." if key == "rcbd" else ".")
+            )
+        res = multi_environment(
+            data, response, treatment, environment, block=block if key == "rcbd" else None,
+            environment_effect=environment_effect, alpha=alpha, decimals=decimals,
+        )
+        p = float(res.combined.table.set_index("source").loc["Treatment", "p_value"])
+    if genetics:
+        res.genetics = _genetics(data, [response], key, treatment, block, environment, genetic_k)
+    if methods == []:
+        return res
+    if posthoc_when == "significant" and not p < alpha:
+        res.messages.append(
+            f"No significant treatment effect at α = {alpha}; post-hoc comparisons were not run."
+        )
+        return res
+    if methods is None:
+        methods = _ask_posthoc(ask)
+        if methods is None:
+            methods = ["tukey"]
+            res.messages.append(
+                "posthoc='ask' needs an interactive terminal or an ask= function; using Tukey HSD."
+            )
+    for m in methods:
+        res.comparisons[m] = res.compare(m)
+    return res
 
 
 def analyze(
     data: pd.DataFrame,
-    response: str,
+    response: str | list[str],
     design: str,
     treatment: str | None = None,
     block: str | None = None,
@@ -691,8 +777,30 @@ def analyze(
     on_nonnormal: str = "ask",
     ask: Callable[[str], str] | None = None,
     decimals: int = 2,
-) -> AnalysisReport:
+    replicate: str | None = None,
+    environment: str | list[str] | None = None,
+    environment_effect: str = "random",
+    genetics: bool = False,
+    genetic_k: float = 2.06,
+):
     """Run the whole analysis with one command.
+
+    This is the single entry point for the design-based analyses:
+
+    ===========================================  ====================================
+    Call                                         Returns
+    ===========================================  ====================================
+    ``design="crd"/"rcbd"/"latin_square"/...``   :class:`AnalysisReport`
+    ``design="alpha_lattice"`` (+ ``replicate``) :class:`AlphaLatticeResult`
+    ``environment=...`` (locations / years)      :class:`MultiEnvResult`
+    ``response=[...]`` (several traits)          :class:`TraitsReport`
+    ===========================================  ====================================
+
+    Every result supports ``print()``, ``.tables()`` and ``.export(path)``, and
+    honours ``posthoc=`` (``"tukey"``, ``"lsd"``, ``"dmrt"``, ``"bonferroni"``,
+    a list, ``"all"``, ``"ask"`` or ``None``).  The alpha-lattice and
+    multi-environment branches skip the Shapiro–Wilk gate; use
+    :func:`residual_diagnostics` on their data if you need it.
 
     Steps: Shapiro–Wilk on the model residuals → (decision if not normal) →
     ANOVA → post-hoc with letter groups if the effect is significant →
@@ -731,13 +839,29 @@ def analyze(
         (receives the question, returns ``"p"`` or ``"r"``).
     decimals:
         Decimal places in the formatted tables.
+    replicate:
+        Replicate column for ``design="alpha_lattice"`` (``block`` is then the
+        incomplete block within the replicate).
+    environment:
+        Environment column, or list of columns (e.g. ``["location", "year"]``),
+        for a combined analysis over environments with ``design="crd"`` or
+        ``"rcbd"``.
+    environment_effect:
+        ``"random"`` (default) or ``"fixed"``; see :func:`multi_environment`.
+    genetics:
+        ``True`` also computes :func:`genetic_parameters` (σ²g, σ²p, GCV, PCV,
+        h², genetic advance) for the same treatment/block(/environment)
+        columns, treating treatments as random genotypes.  Needs design
+        ``"crd"`` or ``"rcbd"``.  The result is in ``.genetics``.
+    genetic_k:
+        Selection differential for genetic advance (2.06 = top 5 %).
 
     Returns
     -------
-    AnalysisReport
-        Use ``print(report)``, ``report.thesis_table()``,
-        ``report.anova_table()``, ``report.proceed()`` and
-        ``report.export("results.xlsx")``.
+    AnalysisReport, AlphaLatticeResult, MultiEnvResult or TraitsReport
+        See the table above.  For ``AnalysisReport`` use ``print(report)``,
+        ``report.thesis_table()``, ``report.anova_table()``,
+        ``report.proceed()`` and ``report.export("results.xlsx")``.
 
     Raises
     ------
@@ -751,9 +875,35 @@ def analyze(
     test has little power; inspect residual plots as well.  Statistical
     significance does not establish agronomic importance.
     """
+    key = _DESIGNS.get(str(design).lower().replace("-", "_").replace(" ", "_"))
+    if key is None and str(design).lower().replace("-", "_").replace(" ", "_") in (
+        "alpha_lattice", "alpha", "lattice",
+    ):
+        key = "alpha_lattice"
+    if posthoc_when not in ("significant", "always"):
+        raise AnalysisError("posthoc_when must be 'significant' or 'always'.")
+    if not isinstance(response, str):
+        from agristatspy.analysis.traits import analyze_traits
+
+        return analyze_traits(
+            data, list(response), design, on_nonnormal=on_nonnormal, treatment=treatment,
+            block=block, row=row, column=column, factors=factors, main=main, sub=sub,
+            alpha=alpha, normality_alpha=normality_alpha, posthoc=posthoc,
+            posthoc_when=posthoc_when, ask=ask, decimals=decimals, replicate=replicate,
+            environment=environment, environment_effect=environment_effect,
+            genetics=genetics, genetic_k=genetic_k,
+        )
+    if key == "alpha_lattice" or environment is not None:
+        if genetics:
+            _check_genetics_design(key)
+        return _special(
+            data, response, key, treatment, block, replicate, environment, environment_effect,
+            alpha, posthoc, posthoc_when, ask, decimals, genetics, genetic_k,
+        )
     return _execute(
         data=data, response=response, design=design, treatment=treatment, block=block,
         row=row, column=column, factors=factors, main=main, sub=sub, alpha=alpha,
         normality_alpha=normality_alpha, posthoc=posthoc, posthoc_when=posthoc_when,
         on_nonnormal=on_nonnormal, ask=ask, decimals=decimals,
+        genetics=genetics, genetic_k=genetic_k,
     )

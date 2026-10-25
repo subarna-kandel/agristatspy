@@ -10,6 +10,7 @@ convenience summary and can have more than one valid arrangement.
 from __future__ import annotations
 
 import itertools
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -212,6 +213,7 @@ def _pairwise(
     mse: float,
     dfe: int,
     alpha: float,
+    pair_factor: Callable[[str, str], float] | None = None,
 ) -> pd.DataFrame:
     k = len(means)
     n_pairs = k * (k - 1) // 2
@@ -219,7 +221,7 @@ def _pairwise(
     rank = {t: i for i, t in enumerate(means.sort_values(ascending=False, kind="stable").index)}
     for g1, g2 in itertools.combinations(sorted(means.index), 2):
         diff = float(means[g2] - means[g1])
-        inv_n = 1.0 / counts[g1] + 1.0 / counts[g2]
+        inv_n = pair_factor(g1, g2) if pair_factor else 1.0 / counts[g1] + 1.0 / counts[g2]
         if method == "dmrt":
             # Duncan: means r steps apart are tested at 1 - (1 - alpha)^(r - 1).
             r = abs(rank[g1] - rank[g2]) + 1
@@ -431,4 +433,73 @@ def dmrt(
         "Method: Duncan's Multiple Range Test (rank-dependent critical ranges).\n"
         "WARNING: more liberal than Tukey HSD; the family-wise error rate is NOT\n"
         "  controlled at α.  Use after a significant overall F-test.",
+    )
+
+
+_METHODS = {
+    "tukey": ("Tukey HSD", "Method: Tukey Honest Significant Difference (HSD)."),
+    "lsd": ("Fisher LSD", "Method: Fisher's Least Significant Difference (unadjusted t-tests)."),
+    "dmrt": ("Duncan DMRT", "Method: Duncan's Multiple Range Test."),
+    "bonferroni": ("Bonferroni", "Method: Bonferroni-adjusted pairwise t-tests."),
+}
+
+
+def compare_means(
+    means: pd.Series,
+    counts: pd.Series | int,
+    mse: float,
+    df_error: int,
+    method: str = "tukey",
+    alpha: float = 0.05,
+    pair_factor: Callable[[str, str], float] | None = None,
+    error_note: str = "user-supplied error mean square",
+) -> ComparisonResult:
+    """Compare treatment means from summary statistics.
+
+    Useful when the error term is not the plain one-way or additive-block
+    error, e.g. adjusted means from an incomplete-block design, or means over
+    environments tested against the treatment × environment mean square.
+
+    Parameters
+    ----------
+    means:
+        Treatment means (index = label).
+    counts:
+        Observations behind each mean (a Series, or one integer for all).
+        Ignored for a pair when *pair_factor* is given.
+    mse, df_error:
+        Error mean square and its degrees of freedom.
+    method:
+        ``"tukey"``, ``"lsd"``, ``"dmrt"`` or ``"bonferroni"``.
+    alpha:
+        Significance level.
+    pair_factor:
+        Optional ``f(g1, g2)`` returning ``Var(mean_g1 - mean_g2) / mse``;
+        defaults to ``1/n1 + 1/n2``.
+    error_note:
+        Text describing the error term, for the report notes.
+    """
+    _validate_alpha(alpha)
+    if method not in _METHODS:
+        raise AnalysisError(f"method must be one of {sorted(_METHODS)}; got {method!r}.")
+    means = means.astype(float)
+    if len(means) < 2:
+        raise AnalysisError("compare_means requires at least 2 treatment means.")
+    if not (np.isfinite(mse) and mse >= 0) or df_error < 1:
+        raise AnalysisError("compare_means needs a finite mse >= 0 and df_error >= 1.")
+    if isinstance(counts, (int, np.integer)):
+        counts = pd.Series(int(counts), index=means.index)
+    label, text = _METHODS[method]
+    table = _pairwise(method, means, counts, float(mse), int(df_error), alpha, pair_factor)
+    notes = (
+        f"{text}\n"
+        f"Error term: {error_note}; MSE = {mse:.6g}, df = {df_error}.\n"
+        "'reject=True' means equal means are rejected at the stated α.\n"
+        "Statistical significance does not establish agronomic importance.\n"
+        "Pairwise comparisons are the primary output; compact letter displays\n"
+        "  are a convenience summary only."
+    )
+    return ComparisonResult(
+        table=table, method=label, alpha=alpha, model_notes=notes,
+        means=means, mse=float(mse), df_error=int(df_error),
     )

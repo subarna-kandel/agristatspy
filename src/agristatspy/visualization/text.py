@@ -80,6 +80,11 @@ def render_layout(
             separator=separator,
             cell_width=cell_width,
         )
+    elif dtype == "AlphaLattice":
+        return _render_alpha_lattice(
+            design, separator=separator, cell_width=cell_width,
+            block_separator=block_separator,
+        )
     else:
         raise ValueError(f"No text renderer for design type {dtype!r}.")
 
@@ -298,4 +303,36 @@ def _render_split_plot(
         if block_separator and b_idx < len(blocks) - 1:
             lines.append((separator or "=") * total_w)
             lines.append("")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Alpha-lattice renderer
+# ---------------------------------------------------------------------------
+
+def _render_alpha_lattice(
+    design: object, separator: str, cell_width: int, block_separator: bool
+) -> str:
+    meta = design.metadata  # type: ignore[attr-defined]
+    tbl = design.table  # type: ignore[attr-defined]
+    k = meta.extra["block_size"]
+    s = meta.extra["blocks_per_rep"]
+    lines = [
+        f"{meta.design_type} — {meta.n_treatments} treatments, {meta.replications} "
+        f"replicates × {s} blocks of {k} = {meta.total_plots} plots",
+        f"Seed: {meta.seed}" if meta.seed is not None else "Seed: None (random)",
+        "",
+    ]
+    width = max(cell_width, int(tbl["treatment"].str.len().max()), int(tbl["plot_id"].str.len().max()))
+    eq_line = (separator or "=") * (k * (width + 3) + 1)
+    reps = sorted(tbl["replicate"].unique())
+    for ri, rep in enumerate(reps):
+        lines.append(f"REPLICATE {rep}")
+        for blk in sorted(tbl[tbl["replicate"] == rep]["block"].unique()):
+            b = tbl[(tbl["replicate"] == rep) & (tbl["block"] == blk)].sort_values("position_in_block")
+            lines.append(f"  Block {blk}")
+            lines.extend(_format_grid(b["plot_id"].tolist(), b["treatment"].tolist(), k, width, "-"))
+        lines.append("")
+        if block_separator and ri < len(reps) - 1:
+            lines += [eq_line, ""]
     return "\n".join(lines)

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
 import pandas as pd
 
 from agristatspy.exceptions import AnalysisError
@@ -61,6 +62,22 @@ def plot_layout(design: object, figsize: tuple[float, float] | None = None):
             for i in range(len(tbl)):
                 positions.append((i % ncol, -(i // ncol) - 1))
             width, height = ncol, math.ceil(len(tbl) / ncol)
+    elif base == "AlphaLattice":
+        k = meta.extra["block_size"]
+        y_cursor = 0.0
+        width = k
+        for rep in sorted(tbl["replicate"].unique()):
+            rdf = tbl[tbl["replicate"] == rep]
+            top = y_cursor
+            for blk in sorted(rdf["block"].unique()):
+                bdf = rdf[rdf["block"] == blk].sort_values("position_in_block")
+                for i in range(len(bdf)):
+                    positions.append((i, top - 1))
+                block_boxes.append((-0.05, top - 1.05, k + 0.1, 1.1, f"Rep {rep} · Block {blk}"))
+                top -= 1.5
+            y_cursor = top - gap
+        height = -y_cursor
+        tbl = tbl.sort_values(["replicate", "block", "position_in_block"])
     else:  # RCBD / SplitPlot: one band per block
         if base == "SplitPlot":
             per_block = len(meta.extra["main_levels"]) * len(meta.extra["sub_levels"])
@@ -244,3 +261,56 @@ def plot_residuals(diagnostics: object):
     axes[1].set_title("Normal Q–Q plot")
     fig.tight_layout()
     return fig, axes
+
+
+def plot_correlation(result: object, figsize: tuple[float, float] | None = None):
+    """Heat map of a :class:`~agristatspy.analysis.multivariate.CorrelationResult`.
+
+    Cells show ``r`` with significance stars (* 0.05, ** 0.01, *** 0.001).
+    Returns ``(Figure, Axes)``.
+    """
+    plt = _plt()
+    r = result.r  # type: ignore[attr-defined]
+    k = len(r)
+    fig, ax = plt.subplots(figsize=figsize or (max(4.0, 0.9 * k + 2), max(3.5, 0.9 * k + 1)))
+    im = ax.imshow(r.to_numpy(float), cmap="RdBu_r", vmin=-1, vmax=1)
+    ax.set_xticks(range(k), r.columns, rotation=45, ha="right")
+    ax.set_yticks(range(k), r.index)
+    stars = result.stars()  # type: ignore[attr-defined]
+    for i in range(k):
+        for j in range(k):
+            ax.text(j, i, stars.iloc[i, j], ha="center", va="center", fontsize=8)
+    fig.colorbar(im, ax=ax, label="r")
+    ax.set_title(f"{result.method.title()} correlation")  # type: ignore[attr-defined]
+    fig.tight_layout()
+    return fig, ax
+
+
+def plot_pca(result: object, figsize: tuple[float, float] | None = None):
+    """Scree plot and PC1-PC2 biplot of a :class:`PCAResult`.
+
+    Points are observations (or group means); arrows are trait loadings.
+    Returns ``(Figure, (ax_scree, ax_biplot))``.
+    """
+    plt = _plt()
+    eig, load, sc = result.eigenvalues, result.loadings, result.scores  # type: ignore[attr-defined]
+    fig, (a1, a2) = plt.subplots(1, 2, figsize=figsize or (11, 4.5))
+    a1.bar(eig["component"], eig["variance_pct"], color="#4c78a8")
+    a1.plot(eig["component"], eig["cumulative_pct"], "o-", color="black")
+    a1.set_ylabel("Variance explained (%)")
+    a1.set_title("Scree plot")
+    if sc.shape[1] >= 2:
+        a2.scatter(sc["PC1"], sc["PC2"], color="#4c78a8")
+        for lab, (x, y) in sc[["PC1", "PC2"]].iterrows():
+            a2.annotate(str(lab), (x, y), fontsize=7, xytext=(3, 3), textcoords="offset points")
+        scale = float(np.abs(sc[["PC1", "PC2"]].to_numpy()).max() / max(np.abs(load[["PC1", "PC2"]].to_numpy()).max(), 1e-12))
+        for lab, (x, y) in load[["PC1", "PC2"]].iterrows():
+            a2.arrow(0, 0, x * scale * 0.9, y * scale * 0.9, color="#e45756", head_width=0.05 * scale * 0.3)
+            a2.text(x * scale, y * scale, str(lab), color="#e45756", fontsize=8)
+        a2.axhline(0, color="grey", lw=0.5)
+        a2.axvline(0, color="grey", lw=0.5)
+        a2.set_xlabel(f"PC1 ({eig['variance_pct'].iloc[0]:.1f}%)")
+        a2.set_ylabel(f"PC2 ({eig['variance_pct'].iloc[1]:.1f}%)")
+    a2.set_title("Biplot")
+    fig.tight_layout()
+    return fig, (a1, a2)

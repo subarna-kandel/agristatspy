@@ -21,7 +21,50 @@ statistically sound results without writing boilerplate for every experiment.
 - **Mean comparison** — Tukey HSD, Fisher's LSD, Duncan's DMRT and Bonferroni, using the design's own error term, with compact letter displays.
 - **Diagnostics and plots** — residual normality/variance checks, mean, box, interaction and residual plots.
 - **Reports and Excel export** — Markdown, HTML and multi-sheet Excel workbooks of designs, ANOVA, comparisons and diagnostics.
+- **Alpha-lattice designs** — generate resolvable incomplete-block layouts and analyse them (intra-block ANOVA, adjusted means, per-pair SED, efficiency vs RCBD).
+- **Multi-environment analysis** — combined ANOVA over locations, years or location × year, with Bartlett's test, Treatment × Environment and comparisons against the right error term.
+- **Multi-trait, genetics and multivariate tools** — `analyze_traits`, genetic parameters (GCV, PCV, h², GA), correlation, PCA, and Welch / Wilcoxon two-group tests.
 - **Strict validation** — invalid inputs and incomplete data raise clear, package-specific exceptions.
+
+## One command for everything
+
+`ag.analyze` is the single entry point; what you pass decides what runs.
+
+```python
+import agristatspy as ag
+
+ag.analyze(df, "yield", "rcbd", treatment="variety", block="rep")                  # one trial
+ag.analyze(df, "yield", "alpha_lattice", treatment="variety", replicate="rep", block="blk")
+ag.analyze(df, "yield", "rcbd", treatment="variety", block="rep",
+           environment=["location", "year"])                                        # multi-location / multi-year
+ag.analyze(df, ["yield", "height", "tillers"], "rcbd", treatment="variety", block="rep")  # many traits
+
+# any of them: choose the mean-comparison test(s), then print or export
+res = ag.analyze(df, "yield", "rcbd", treatment="variety", block="rep", posthoc="all")  # tukey|lsd|dmrt|bonferroni|list|all|ask|None
+print(res)
+res.export("results.xlsx")        # also .csv .md .html .tex
+
+# add genetic parameters (GCV, PCV, h2, GA) to a crd/rcbd analysis, single site, multi-site or multi-trait
+res = ag.analyze(df, ["yield", "height"], "rcbd", treatment="variety", block="rep", genetics=True)
+res.genetics.table
+```
+
+| You pass | You get | Extra access |
+|---|---|---|
+| `design="crd"/"rcbd"/"latin_square"/"factorial"/"split_plot"` | `AnalysisReport` | `.thesis_table()`, `.comparisons`, `.proceed()` |
+| `design="alpha_lattice"` + `replicate=` | `AlphaLatticeResult` | adjusted means, `.sed`, `.relative_efficiency`, `.compare(...)` |
+| `environment=` | `MultiEnvResult` | `.per_env`, `.homogeneity`, `.compare(...)` |
+| `response=[...]` | `TraitsReport` | `.summary`, `.reports[trait]` |
+
+`genetics=True` works with `crd`/`rcbd`, with or without `environment=` or several responses. Separate helpers for everything else:
+
+```python
+ag.genetic_parameters(df, ["yield", "height"], genotype="variety", replication="rep")  # GCV, PCV, h2, GA
+ag.correlation(df, ["yield", "height"]).plot()
+ag.pca(df, ["yield", "height", "tillers"], by="variety").plot()
+ag.two_sample_test(df, "yield", "treatment", test="welch")                              # or "wilcoxon"
+ag.design.alpha_lattice(n_treatments=24, block_size=4, replications=3, seed=1)          # generate a layout
+```
 
 ## Installation
 
@@ -110,9 +153,16 @@ For a CRD, use `ag.anova_crd(df, response=..., treatment=...)`.
 |---|---|
 | `ag.design.crd` / `rcbd` / `latin_square` / `factorial` / `split_plot` | Generate a randomized design |
 | `ag.treatment_summary(...)` | Per-treatment descriptive statistics and CV% |
-| `ag.analyze(...)` | Whole workflow in one call, with export |
+| `ag.analyze(...)` | **Main command**: designs, alpha lattice, multi-environment, multi-trait, with export |
 | `ag.anova(...)`, `anova_crd`, `anova_rcbd`, `anova_latin_square`, `anova_factorial`, `anova_split_plot` | Analysis of variance |
 | `ag.tukey_hsd`, `ag.lsd_test`, `ag.dmrt`, `ag.bonferroni` | Pairwise comparisons (`.letters()` for groupings) |
+| `ag.design.alpha_lattice`, `ag.anova_alpha_lattice` | Resolvable incomplete-block design and its intra-block analysis |
+| `ag.multi_environment(...)` | Combined analysis over locations / years |
+| `ag.analyze_traits(...)` | `analyze` over several responses with a summary table |
+| `ag.genetic_parameters(...)` | σ²g, σ²p, GCV, PCV, h², genetic advance |
+| `ag.correlation(...)`, `ag.pca(...)` | Trait correlations and principal components |
+| `ag.two_sample_test(...)` | Welch / Student t-test, Wilcoxon rank-sum / signed-rank |
+| `ag.compare_means(...)` | Tukey / LSD / DMRT / Bonferroni from means, MSE and df |
 | `ag.residual_diagnostics(...)` | Residuals, Shapiro–Wilk, Brown–Forsythe |
 | `ag.visualization.plot_*` | Layout, means, box, interaction and residual plots |
 | `ag.io.write_report(...)`, `ag.io.write_excel(...)` | Markdown / HTML report; multi-sheet Excel workbook |
