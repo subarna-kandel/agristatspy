@@ -7,7 +7,7 @@ license: MIT
 date-released: 2026-10-24
 repository-code: "https://github.com/agristatspy/agristatspy"
 authors:
-  - name: "AgriStatsPy contributors"
+  - name: "Subarna Kandel"
 keywords:
   - agriculture
   - experimental design
