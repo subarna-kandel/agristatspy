@@ -28,10 +28,13 @@ from agristatspy.analysis.multivariate import (
 )
 from agristatspy.analysis.summary import treatment_summary
 from agristatspy.analysis.traits import TraitsReport, analyze_traits
+from agristatspy.analysis.transform import TransformResult, transform
 from agristatspy.analysis.two_sample import TwoSampleResult, two_sample_test
 from agristatspy.analysis.workflow import AnalysisReport, analyze
 
 __all__ = [
+    "transform",
+    "TransformResult",
     "anova_alpha_lattice",
     "AlphaLatticeResult",
     "multi_environment",

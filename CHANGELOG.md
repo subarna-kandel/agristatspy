@@ -7,6 +7,7 @@ All notable changes to this project are documented here. The project follows
 ## [Unreleased]
 
 ### Added
+- `ag.transform` — data transformations (`log`, `log10`, `sqrt`, `arcsine`, `reciprocal`, `square`, `boxcox`) returning a copy of the data with a new column, the parameters used, and `.back_transform()` for reporting means on the original scale. Invalid values raise `AnalysisError`; nothing is shifted or dropped automatically.
 - `ag.analyze` is now the single entry point: `design="alpha_lattice"` (+ `replicate=`), `environment=` and a list of `response`s dispatch to the matching analysis; all honour `posthoc=` and `.export()`; `genetics=True` adds genetic parameters to crd/rcbd analyses.
 - `ag.design.alpha_lattice` (cyclic alpha(0,1) generating array, randomized) with text and graphical layouts, and `ag.anova_alpha_lattice` (intra-block ANOVA, adjusted means, SED matrix, relative efficiency, `.compare()`).
 - `ag.multi_environment` — combined ANOVA over locations/years/location × year (random or fixed environments), Bartlett homogeneity test, per-environment ANOVAs, `.compare()`, export.

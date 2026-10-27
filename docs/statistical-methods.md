@@ -179,6 +179,12 @@ All procedures use the design's error mean square: pooled one-way (CRD), or the 
 
 `ag.residual_diagnostics(df, response, treatment, block=None)` returns residuals, fitted values, a Shapiro–Wilk test of normality and a Brown–Forsythe (median-centered Levene) test of equal variances. A non-significant test does not prove an assumption holds; a significant one is a prompt to investigate, not to delete observations. Outliers are never removed automatically.
 
+## 4d. Data transformations
+
+`ag.transform(df, column, method, ...)` returns a `TransformResult` holding a copy of the data with a new column (the original is kept). Methods: `log` (ln(x + c)), `log10`, `sqrt` (√(x + c); c = 0.5 for counts with zeros), `arcsine` (arcsin√p in degrees, `scale="percent"` or `"proportion"`), `reciprocal` (1/(x + c)), `square` (left skew) and `boxcox` (λ by maximum likelihood, or fixed with `lmbda=`).
+
+The constant `c` is never chosen automatically: values outside the domain raise `AnalysisError`. Missing values stay missing. `result.back_transform(means)` returns values on the original scale; these are not arithmetic means (for log they estimate geometric means). Always re-run `residual_diagnostics` on the transformed response; a transformation can fail to fix the problem and ordinary ANOVA may still be inappropriate for counts or proportions (see section 5).
+
 ## 5. Statistical safety notices
 
 The following notices apply to all analysis functions in AgriStatsPy:
