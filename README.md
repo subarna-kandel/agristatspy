@@ -220,6 +220,12 @@ request, especially for new statistical methods. New features should include:
 - tests against hand-checkable reference values;
 - documentation updates in the same pull request.
 
+**Using an AI agent or AI assistant?** Read
+[AI agent guidelines in CONTRIBUTING.md](CONTRIBUTING.md#guidelines-for-ai-agents-and-ai-assisted-contributions)
+first. In short: always disclose the AI's work in the PR and issue, link an
+issue, and do not push or open a PR until the code has been fully run
+(`pytest`, `ruff`, examples) and the real results are reported.
+
 ## License
 
 Released under the [MIT License](LICENSE).
